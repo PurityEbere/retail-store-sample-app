@@ -31,7 +31,7 @@ locals {
 }
 
 module "container_images" {
-  source = "../../lib/images"
+  source = "../lib/images"
 
   container_image_overrides = var.container_image_overrides
 }
