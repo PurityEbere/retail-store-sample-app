@@ -42,6 +42,6 @@ jobs:
             terraform init
         
         - name: Terraform Apply
-        run: |
-          cd $terraform_dir
-          terraform apply -auto-approve
+          run: |
+            cd $terraform_dir
+            terraform apply -auto-approve
