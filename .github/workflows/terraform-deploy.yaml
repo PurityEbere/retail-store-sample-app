@@ -9,7 +9,6 @@ jobs:
   terraform:
       name: Terraform Apply
       runs-on: ubuntu-latest
-      needs: [build-and-push]
       env:
         terraform_dir: terraform
         AWS_REGION: ${{ vars.AWS_REGION }}
