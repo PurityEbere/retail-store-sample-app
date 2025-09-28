@@ -10,10 +10,10 @@ jobs:
       name: Terraform Apply
       runs-on: ubuntu-latest
       env:
-        terraform_dir: terraform
+        terraform_dir: terraform/eks
         AWS_REGION: ${{ secrets.AWS_REGION }}
         CERT_MANAGER_EMAIL: ${{ secrets.CERT_MANAGER_EMAIL }}
-        
+
       steps:
         - name: Checkout repository
           uses: actions/checkout@v4
