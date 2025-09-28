@@ -11,8 +11,9 @@ jobs:
       runs-on: ubuntu-latest
       env:
         terraform_dir: terraform
-        AWS_REGION: ${{ vars.AWS_REGION }}
-        CERT_MANAGER_EMAIL: ${{ vars.CERT_MANAGER_EMAIL }}
+        AWS_REGION: ${{ secrets.AWS_REGION }}
+        CERT_MANAGER_EMAIL: ${{ secrets.CERT_MANAGER_EMAIL }}
+        
       steps:
         - name: Checkout repository
           uses: actions/checkout@v4
@@ -22,7 +23,7 @@ jobs:
           with:
             aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
             aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            aws-region: ${{ vars.AWS_REGION }}
+            aws-region: ${{ secrets.AWS_REGION }}
         
         - name: Verify AWS CLI access
           run: aws sts get-caller-identity
