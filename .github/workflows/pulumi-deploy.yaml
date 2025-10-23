@@ -1,4 +1,4 @@
-name: Deploy to Kubernetes
+name: Deploy to EKS
 
 on:
   workflow_dispatch:
@@ -6,11 +6,11 @@ on:
     branches: ["main"]
 
 jobs:
-  terraform:
-      name: Terraform Apply
+  pulumi:
+      name: Pulumi Apply
       runs-on: ubuntu-latest
       env:
-        terraform_dir: terraform/eks
+        pulumi_dir: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
         CERT_MANAGER_EMAIL: ${{ secrets.CERT_MANAGER_EMAIL }}
 
@@ -27,22 +27,6 @@ jobs:
         
         - name: Verify AWS CLI access
           run: aws sts get-caller-identity
-        
-        - name: Install Terraform
-          uses: hashicorp/setup-terraform@v3
-        
-        - name: Create tfvars file
-          run: |
-            cd $terraform_dir
-            echo "region = \"$AWS_REGION\"" > terraform.tfvars
-            echo "certmanager_email = \"$CERT_MANAGER_EMAIL\"" >> terraform.tfvars
-        
-        - name: Terraform Init
-          run: |
-            cd $terraform_dir
-            terraform init
-        
-        - name: Terraform Apply
-          run: |
-            cd $terraform_dir
-            terraform apply -auto-approve
+          
+        - name: Install Pulumi CLI
+          uses: pulumi/actions-install-pulumi-cli@v3
