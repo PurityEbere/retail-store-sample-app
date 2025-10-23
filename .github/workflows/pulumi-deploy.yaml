@@ -34,9 +34,9 @@ jobs:
 
         - name: Install uv (pip's replacement, yeahhhh)
           uses: astral-sh/setup-uv@v6
-          working-directory: ${{ env.WORKING_DIRECTORY }}
           with:
             version: "0.9.5"
+            working-directory: ${{ env.WORKING_DIRECTORY }}
           
         - name: Install pulumi python deps 
           run: uv sync
