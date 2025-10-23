@@ -12,12 +12,8 @@ jobs:
       env:
         pulumi_dir: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
-        CERT_MANAGER_EMAIL: ${{ secrets.CERT_MANAGER_EMAIL }}
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-        
+      steps:        
         - name: Configure AWS credentials
           uses: aws-actions/configure-aws-credentials@v4
           with:
@@ -27,6 +23,29 @@ jobs:
         
         - name: Verify AWS CLI access
           run: aws sts get-caller-identity
+
+        - name: Checkout repository
+          uses: actions/checkout@v4
+
+        - name: Setup Python
+          uses: actions/setup-python@v5
+          with:
+            python-version: 3.11
+
+        - name: Install uv (for pip's replacement, yeahhhh)
+          uses: astral-sh/setup-uv@v6
+          with:
+            version: "0.9.5"
+
+        - name: change directory into pulumi
+          run: cd $pulumi_dir
+
+        - name: Install pulumi python deps 
+          run: uv sync
           
-        - name: Install Pulumi CLI
-          uses: pulumi/actions-install-pulumi-cli@v3
+        - uses: pulumi/actions@v6
+          with:
+            command: up
+            stack-name: dev
+          env:
+            PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
