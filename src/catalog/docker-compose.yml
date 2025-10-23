@@ -44,6 +44,8 @@ services:
       - MYSQL_DATABASE=catalogdb
       - MYSQL_USER=catalog_user
       - MYSQL_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "3306:3306"
     healthcheck:
       test:
         [
