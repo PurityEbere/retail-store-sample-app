@@ -12,10 +12,6 @@ jobs:
       env:
         working_directory: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
-      defaults:
-        run:
-          shell: bash
-          working-directory: $env.working_directory
 
       steps:   
         - name: Checkout repository
@@ -36,11 +32,12 @@ jobs:
           with:
             python-version: 3.11
 
-        - name: Install uv (for pip's replacement, yeahhhh)
+        - name: Install uv (pip's replacement, yeahhhh)
           uses: astral-sh/setup-uv@v6
+          working-directory: ${{ env.WORKING_DIRECTORY }}
           with:
             version: "0.9.5"
-
+          
         - name: Install pulumi python deps 
           run: uv sync
           
@@ -50,7 +47,7 @@ jobs:
             stack-name: dev
             comment-on-pr: true
             github-token: ${{ secrets.GITHUB_TOKEN }}
-            work-dir: $env.working_directory
+            work-dir: ${{ env.WORKING_DIRECTORY }}
             upsert: true
           env:
             PULUMI_BACKEND_URL: file://.
