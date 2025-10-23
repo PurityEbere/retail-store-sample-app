@@ -46,7 +46,9 @@ jobs:
             working-directory: ${{ env.WORKING_DIRECTORY }}
           
         - name: Install pulumi python deps 
-          run: uv sync
+          run: |
+            cd $env.WORKING_DIRECTORY
+            uv sync
           
         - uses: pulumi/actions@v6
           with:
