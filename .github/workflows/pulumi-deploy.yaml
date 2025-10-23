@@ -33,7 +33,7 @@ jobs:
             python-version: 3.11
 
         - name: Install uv (pip's replacement, yeahhhh)
-          uses: astral-sh/setup-uv@v6
+          uses: astral-sh/setup-uv@v7
           with:
             version: "0.9.5"
             working-directory: ${{ env.WORKING_DIRECTORY }}
