@@ -47,6 +47,5 @@ jobs:
         - uses: pulumi/actions@v6
           with:
             command: up
-            stack-name: dev
           env:
             PULUMI_BACKEND_URL: file://.
