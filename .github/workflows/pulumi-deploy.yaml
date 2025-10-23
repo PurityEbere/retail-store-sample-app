@@ -10,12 +10,12 @@ jobs:
       name: Pulumi Apply
       runs-on: ubuntu-latest
       env:
-        pulumi_dir: pulumi
+        working_directory: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
       defaults:
         run:
           shell: bash
-          working-directory: pulumi
+          working-directory: $env.working_directory
 
       steps:   
         - name: Checkout repository
@@ -50,7 +50,7 @@ jobs:
             stack-name: dev
             comment-on-pr: true
             github-token: ${{ secrets.GITHUB_TOKEN }}
-            work-dir: infra
+            work-dir: $env.working_directory
             upsert: true
           env:
             PULUMI_BACKEND_URL: file://.
