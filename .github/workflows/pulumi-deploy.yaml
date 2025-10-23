@@ -10,7 +10,7 @@ jobs:
       name: Pulumi Apply
       runs-on: ubuntu-latest
       env:
-        working_directory: pulumi
+        WORKING_DIRECTORY: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
 
       steps:   
