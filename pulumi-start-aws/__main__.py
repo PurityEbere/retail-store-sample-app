@@ -38,94 +38,45 @@ k8s_provider = k8s.Provider(
     kubeconfig=eks_cluster.kubeconfig
 )
 
+namespace_name = "retailstore"
+
 namespace = k8s.core.v1.Namespace(
-    "app-namespace",
-    metadata={ "name": "app-namespace" },
+    namespace_name,
+    metadata={ "name": "app" },
     opts=pulumi.ResourceOptions(provider=k8s_provider)
 )
 
-timeapi_labels = { "app": "timeapi" }
-nginx_labels = { "app": "nginx" }
+container_repository = awsx.ecr.Repository("retailstore_repository")
+pulumi.export("repository_url", container_repository.url)
 
-# Workload A: timeapi
-timeapi_deployment = k8s.apps.v1.Deployment(
-    "timeapi-deployment",
-    metadata={ "namespace": namespace.metadata["name"], "labels": timeapi_labels },
-    spec={
-        "selector": { "matchLabels": timeapi_labels },
-        "replicas": 2,
-        "template": {
-            "metadata": { "labels": timeapi_labels },
-            "spec": {
-                "containers": [
-                    {
-                        "name": "timeapi",
-                        "image": "vicradon/timeapi:latest",
-                        "ports": [ { "containerPort": 4500 } ],
-                        # add env/volumes if needed
-                    }
-                ]
-            }
-        }
-    },
-    opts=pulumi.ResourceOptions(provider=k8s_provider)
-)
+images = ["app-orders", "app-catalog", "app-cart", "ui-ui", "app-checkout"]
 
-timeapi_service = k8s.core.v1.Service(
-    "timeapi-service",
-    metadata={ "namespace": namespace.metadata["name"], "labels": timeapi_labels },
-    spec={
-        "type": "LoadBalancer",
-        "selector": timeapi_labels,
-        "ports": [ { "port": 4500, "targetPort": 4500 } ]
-    },
-    opts=pulumi.ResourceOptions(provider=k8s_provider)
-)
+# Build and push all images
+built_images = {}
+for image in images:
+    app_dir = "../src/" + image.split("-")[1]
 
-# Workload B: nginx
-nginx_deployment = k8s.apps.v1.Deployment(
-    "nginx-deployment",
-    metadata={ "namespace": namespace.metadata["name"], "labels": nginx_labels },
-    spec={
-        "selector": { "matchLabels": nginx_labels },
-        "replicas": 2,
-        "template": {
-            "metadata": { "labels": nginx_labels },
-            "spec": {
-                "containers": [
-                    {
-                        "name": "nginx",
-                        "image": "nginx:latest",
-                        "ports": [ { "containerPort": 80 } ],
-                    }
-                ]
-            }
-        }
-    },
-    opts=pulumi.ResourceOptions(provider=k8s_provider)
-)
-
-nginx_service = k8s.core.v1.Service(
-    "nginx-service",
-    metadata={ "namespace": namespace.metadata["name"], "labels": nginx_labels },
-    spec={
-        "type": "LoadBalancer",
-        "selector": nginx_labels,
-        "ports": [ { "port": 80, "targetPort": 80 } ]
-    },
-    opts=pulumi.ResourceOptions(provider=k8s_provider)
-)
-
-pulumi.export("timeapi_endpoint", 
-    timeapi_service.status.apply(
-        lambda s: s.load_balancer.ingress[0].hostname or s.load_balancer.ingress[0].ip 
-        if s.load_balancer and s.load_balancer.ingress else None
+    built_image = awsx.ecr.Image(
+        image,
+        repository_url=container_repository.url,
+        context=app_dir,
+        platform="linux/amd64",
+        opts=pulumi.ResourceOptions(
+            ignore_changes=["provider"]
+        )
     )
-)
+    built_images[image] = built_image
 
-pulumi.export("nginx_endpoint", 
-    nginx_service.status.apply(
-        lambda s: s.load_balancer.ingress[0].hostname or s.load_balancer.ingress[0].ip 
-        if s.load_balancer and s.load_balancer.ingress else None
-    )
-)
+'''
+cd ../src
+for dir in cart catalog checkout orders ui; do \
+  ( \
+    cd $dir && \
+    echo "converting for $dir" && \
+    mkdir -p kompose_files && \
+    kompose convert --out kompose_files && \
+    KUBECONFIG=/home/purity/retailstore/pulumi-start-aws/kubeconfig.yaml && \
+    kubectl apply -f kompose_files -n namespace_name \
+  ); \
+done
+'''

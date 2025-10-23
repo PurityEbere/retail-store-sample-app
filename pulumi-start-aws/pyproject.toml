@@ -8,4 +8,5 @@ dependencies = [
     "pulumi-awsx>=3.0.1",
     "pulumi-eks>=4.0.1",
     "pulumi-kubernetes>=4.23.0",
+    "pulumi-kubernetes-ingress-nginx>=0.1.3",
 ]
