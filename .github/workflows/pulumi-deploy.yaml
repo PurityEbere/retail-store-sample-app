@@ -32,6 +32,13 @@ jobs:
           with:
             python-version: 3.11
 
+        - name: cd into working dir 
+          run: |
+            echo "current dir is: " && pwd 
+            echo "working dir is" && echo ${{ env.WORKING_DIRECTORY }}
+            cd ${{ env.WORKING_DIRECTORY }}
+            echo "current dir is: " && pwd
+
         - name: Install uv (pip's replacement, yeahhhh)
           uses: astral-sh/setup-uv@v7
           with:
