@@ -3,6 +3,7 @@ import pulumi_awsx as awsx
 import pulumi_eks as eks
 import pulumi_kubernetes as k8s
 from pathlib import Path
+import os
 
 config = pulumi.Config()
 min_cluster_size = config.get_int("minClusterSize", 1)
@@ -76,6 +77,16 @@ service_image_map = {
     "checkout": built_images["app-checkout"].image_uri,
 }
 
+def apply_namespace(obj, opts):
+    """
+    Ensure all Kubernetes resources get deployed into the retailstore namespace.
+    """
+    if "metadata" in obj:
+        metadata = obj["metadata"]
+        if "namespace" not in metadata or metadata["namespace"] != namespace_name:
+            metadata["namespace"] = namespace_name
+
+
 # Transformation function to replace images with ECR URIs
 def replace_images_with_ecr(obj, opts):
     """
@@ -123,29 +134,96 @@ def replace_images_with_ecr(obj, opts):
                     container["image"] = ecr_uri
                     pulumi.log.info(f"Replacing init container image '{current_image}' with ECR URI for {service_name}")
                     break
+    
+    # Make the UI service a LoadBalancer
+    if kind == "Service":
+        metadata = obj.get("metadata", {})
+        name = metadata.get("name", "")
+        
+        if "ui" in name.lower():
+            spec = obj.get("spec", {})
+            spec["type"] = "LoadBalancer"
+            pulumi.log.info(f"Converting UI service '{name}' to LoadBalancer type")
 
 # Services to deploy
 services = ["cart", "catalog", "checkout", "orders", "ui"]
+
+# Verify kompose files exist before proceeding
+print("\n" + "="*60)
+print("KOMPOSE FILES VERIFICATION")
+print("="*60)
+
+services_with_files = []
+for service in services:
+    kompose_files_dir = f"../src/{service}/kompose_files"
+    abs_path = os.path.abspath(kompose_files_dir)
+    
+    print(f"\nChecking {service}:")
+    print(f"  Path: {abs_path}")
+    
+    if Path(kompose_files_dir).exists():
+        yaml_files = list(Path(kompose_files_dir).glob("*.yaml"))
+        yml_files = list(Path(kompose_files_dir).glob("*.yml"))
+        all_files = yaml_files + yml_files
+        
+        if all_files:
+            print(f"  ✅ Found {len(all_files)} YAML file(s):")
+            for f in all_files:
+                print(f"    - {f.name}")
+            services_with_files.append(service)
+        else:
+            print(f"  ❌ Directory exists but NO YAML files found!")
+    else:
+        print(f"  ❌ Directory does NOT exist!")
+        print(f"  → Run: cd ../src/{service} && mkdir -p kompose_files && kompose convert --out kompose_files")
+
+print("\n" + "="*60)
+print(f"Summary: {len(services_with_files)}/{len(services)} services have kompose files")
+print("="*60 + "\n")
+
+if not services_with_files:
+    pulumi.log.error("NO KOMPOSE FILES FOUND! Please run kompose convert first.")
+    pulumi.log.error("Run this command:")
+    pulumi.log.error("  cd ../src && for dir in cart catalog checkout orders ui; do (cd $dir && mkdir -p kompose_files && kompose convert --out kompose_files); done")
+
+# Store the UI service for export
+ui_service = None
+deployed_count = 0
 
 # Apply Kubernetes manifests for each service using v1 ConfigGroup (which supports transformations)
 for service in services:
     kompose_files_dir = f"../src/{service}/kompose_files"
     
-    # Check if the directory exists
+    # Check if the directory exists and has YAML files
     if Path(kompose_files_dir).exists():
-        # Use v1 ConfigGroup which supports transformations
-        k8s.yaml.ConfigGroup(
-            f"kompose-{service}",
-            files=[f"{kompose_files_dir}/*.yaml"],
-            transformations=[replace_images_with_ecr],
-            opts=pulumi.ResourceOptions(
-                provider=k8s_provider,
-                depends_on=[namespace] + list(built_images.values())
-            )
-        )
+        yaml_files = list(Path(kompose_files_dir).glob("*.yaml"))
+        yml_files = list(Path(kompose_files_dir).glob("*.yml"))
+        all_files = yaml_files + yml_files
         
-        pulumi.log.info(f"Applied Kubernetes manifests for {service}")
+        if all_files:
+            # Use v1 ConfigGroup which supports transformations
+            config_group = k8s.yaml.ConfigGroup(
+                f"kompose-{service}",
+                files=[f"{kompose_files_dir}/*.yaml"],
+                transformations=[replace_images_with_ecr, apply_namespace],
+                opts=pulumi.ResourceOptions(
+                    provider=k8s_provider,
+                    depends_on=[namespace] + list(built_images.values())
+                )
+            )
+            
+            deployed_count += 1
+            
+            # Capture the UI service for export
+            if service == "ui":
+                ui_service = config_group
+            
+            pulumi.log.info(f"✅ Applied Kubernetes manifests for {service} ({len(all_files)} files)")
+        else:
+            pulumi.log.warn(f"❌ Skipping {service}: Directory exists but no YAML files found")
     else:
-        pulumi.log.warn(f"Kompose files directory not found for {service}: {kompose_files_dir}")
+        pulumi.log.warn(f"❌ Skipping {service}: Directory not found at {kompose_files_dir}")
 
-pulumi.export("deployed_services", services)
+pulumi.export("deployed_services", services_with_files)
+pulumi.export("deployed_count", deployed_count)
+
