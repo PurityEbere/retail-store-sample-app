@@ -12,6 +12,7 @@ jobs:
       env:
         WORKING_DIRECTORY: pulumi
         AWS_REGION: ${{ secrets.AWS_REGION }}
+        PULUMI_CONFIG_PASSPHRASE: ""
 
       steps:   
         - name: Checkout repository
@@ -43,13 +44,10 @@ jobs:
             cd ${{ env.WORKING_DIRECTORY }}
             uv sync
           
-        - uses: pulumi/actions@v6
+        - name: Deploy with Pulumi
+          uses: pulumi/actions@v6
           with:
             command: up
-            stack-name: dev
-            comment-on-pr: true
-            github-token: ${{ secrets.GITHUB_TOKEN }}
+            stack-name: organization/retail-store/dev
+            cloud-url: s3://retailstorepulumibucket?region=eu-north-1&awssdk=v2
             work-dir: ${{ env.WORKING_DIRECTORY }}
-            upsert: true
-          env:
-            PULUMI_BACKEND_URL: file://.
